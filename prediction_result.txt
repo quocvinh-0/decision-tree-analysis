@@ -1,0 +1,36 @@
+KẾT QUẢ DỰ ĐOÁN CHO SLIDE
+======================================================================
+
+Phần tử mới:
+  AT: 18.00 °C
+  V: 50.00 cmHg
+  AP: 1015.00 mbar
+  RH: 70.00 %
+
+Giá trị PE dự đoán: 461.80 MW
+
+Đường đi trong cây quyết định (toàn bộ):
+  1. AT <= 17.895 → False (Giá trị: 18.00)
+  2. AT <= 23.055 → True (Giá trị: 18.00)
+  3. V <= 56.750 → True (Giá trị: 50.00)
+  4. V <= 45.755 → False (Giá trị: 50.00)
+  5. AP <= 1011.485 → False (Giá trị: 1015.00)
+  6. AT <= 20.595 → True (Giá trị: 18.00)
+  7. AP <= 1025.285 → True (Giá trị: 1015.00)
+  8. RH <= 89.845 → True (Giá trị: 70.00)
+  9. RH <= 89.725 → True (Giá trị: 70.00)
+  10. V <= 49.445 → False (Giá trị: 50.00)
+  11. V <= 49.665 → False (Giá trị: 50.00)
+  12. AT <= 18.705 → True (Giá trị: 18.00)
+  13. RH <= 67.170 → False (Giá trị: 70.00)
+  14. AP <= 1020.210 → True (Giá trị: 1015.00)
+  15. RH <= 77.550 → True (Giá trị: 70.00)
+  16. AT <= 18.425 → True (Giá trị: 18.00)
+
+Đường đi rút gọn cho slide (3-5 bước đầu):
+  1. AT <= 17.895 → False (Giá trị: 18.00)
+  2. AT <= 23.055 → True (Giá trị: 18.00)
+  3. V <= 56.750 → True (Giá trị: 50.00)
+  4. V <= 45.755 → False (Giá trị: 50.00)
+  5. AP <= 1011.485 → False (Giá trị: 1015.00)
+  ... (còn 11 bước nữa)
