@@ -1,78 +1,101 @@
-import pandas as pd
-import joblib
 import os
+import joblib
+import pandas as pd
 
-def save_results(train_df, test_df, feature_importance_df, best_model_info, 
+
+def save_results(train_df, test_df, feature_importance_df, best_model_info,
                 comparison_results, best_model):
-    """
-    Lưu tất cả kết quả vào file
-    """
-    # Lưu mô hình và scaler
+    """Lưu toàn bộ kết quả chạy mô hình vào mô hình + Excel."""
     save_models(best_model_info, best_model)
-    
-    # Lưu kết quả vào Excel
-    save_results_to_excel(train_df, test_df, feature_importance_df, 
-                         best_model_info, comparison_results)
+    save_results_to_excel(
+        train_df, test_df, feature_importance_df, best_model_info, comparison_results
+    )
+
 
 def save_models(best_model_info, best_model):
-    """Lưu mô hình và scaler"""
+    """Lưu mô hình Decision Tree và scaler (nếu hiện diện)."""
     model_path = os.path.join('result', 'best_decision_tree_model.pkl')
-    scaler_path = os.path.join('result', 'scaler.pkl')
-    
     joblib.dump(best_model, model_path)
-    joblib.dump(best_model_info['scaler'], scaler_path)
-    
-    print("\n✅ Đã lưu mô hình và scaler thành công vào thư mục 'result':")
-    print(f"   • {model_path}")
-    print(f"   • {scaler_path}")
+    print("\nĐã lưu mô hình Decision Tree vào thư mục 'result':")
+    print(f"   - {model_path}")
 
-def save_results_to_excel(train_df, test_df, feature_importance_df, 
+    scaler = best_model_info.get('scaler')
+    if scaler is not None:
+        scaler_path = os.path.join('result', 'scaler.pkl')
+        joblib.dump(scaler, scaler_path)
+        print(f"   - {scaler_path} (Scaler đi kèm)")
+
+
+def save_results_to_excel(train_df, test_df, feature_importance_df,
                          best_model_info, comparison_results):
-    """Lưu kết quả vào file Excel"""
+    """Ghi kết quả ra file Excel nhiều sheet."""
     excel_path = os.path.join('result', 'results_summary.xlsx')
-    
+
     with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-        
-        # Sheet 1: Tổng quan kết quả
         save_summary_sheet(writer, test_df, best_model_info, comparison_results)
-        
-        # Sheet 2: So sánh mô hình
         save_model_comparison_sheet(writer, comparison_results)
-        
-        # Sheet 3: Feature Importance
         feature_importance_df.to_excel(writer, sheet_name='Feature Importance', index=False)
-        
-        # Sheet 4: Kết quả 10 lần chạy
         save_detailed_results_sheet(writer, test_df)
-        
-        # Sheet 5: Tham số mô hình tốt nhất
         save_best_model_sheet(writer, best_model_info)
-        
-        # Sheet 6: Cross-validation results
         save_cv_results_sheet(writer, comparison_results)
-    
-    print(f"✅ Đã lưu file Excel tổng hợp: {excel_path}")
+
+    print(f"Đã lưu file Excel tổng hợp: {excel_path}")
+
 
 def save_summary_sheet(writer, test_df, best_model_info, comparison_results):
     """Lưu sheet tổng quan"""
+    def status_text(condition, good='Tốt', caution='Cần theo dõi'):
+        return good if condition else caution
+
     summary_data = {
-        'Metric': ['R² Trung bình', 'RMSE Trung bình', 'MAE Trung bình', 'MAPE Trung bình',
-                  'R² Tốt nhất', 'Độ lệch chuẩn R²', 'Số lần chạy', 'Mô hình tốt nhất',
-                  'Cross-Val R²', 'Cross-Val RMSE'],
-        'Giá trị': [f"{test_df['r2'].mean():.4f}", f"{test_df['rmse'].mean():.4f}", 
-                   f"{test_df['mae'].mean():.4f}", f"{test_df['mape'].mean():.2f}%",
-                   f"{best_model_info['test_r2']:.4f}", f"{test_df['r2'].std():.4f}",
-                   '10', f"Lần {best_model_info['run_id'] + 1}",
-                   f"{comparison_results['cv_results']['test_r2'].mean():.4f}", 
-                   f"{comparison_results['cv_results']['test_rmse'].mean():.4f}"],
-        'Đánh giá': [f"{'✅ Tốt' if test_df['r2'].mean() > 0.9 else '⚠️ Khá'}", 
-                    f"{'✅ Tốt' if test_df['rmse'].mean() < 5 else '⚠️ Trung bình'}",
-                    f"{'✅ Tốt' if test_df['mae'].mean() < 4 else '⚠️ Trung bình'}",
-                    f"{'✅ Tốt' if test_df['mape'].mean() < 5 else '⚠️ Khá'}",
-                    '🏆 Tốt nhất', f"{'Ổn định' if test_df['r2'].std() < 0.02 else 'Biến động'}",
-                    'Đủ', 'Đã chọn',
-                    f"{'✅ Tốt' if comparison_results['cv_results']['test_r2'].mean() > 0.9 else '⚠️ Khá'}",
-                    f"{'✅ Tốt' if comparison_results['cv_results']['test_rmse'].mean() < 5 else '⚠️ Trung bình'}"]
+        'Metric': [
+            'R² Trung bình',
+            'RMSE Trung bình',
+            'MAE Trung bình',
+            'Median AE Trung bình',
+            'Max Error Trung bình',
+            'MAPE Trung bình',
+            'Explained Variance TB',
+            'R² Tốt nhất',
+            'Độ lệch chuẩn R²',
+            'Số lần chạy',
+            'Mô hình tốt nhất',
+            'Cross-Val R²',
+            'Cross-Val RMSE',
+            'Cross-Val MAE',
+        ],
+        'Giá trị': [
+            f"{test_df['r2'].mean():.4f}",
+            f"{test_df['rmse'].mean():.4f}",
+            f"{test_df['mae'].mean():.4f}",
+            f"{test_df['medae'].mean():.4f}",
+            f"{test_df['max_error'].mean():.4f}",
+            f"{test_df['mape'].mean():.2f}%",
+            f"{test_df['explained_variance'].mean():.4f}",
+            f"{best_model_info['test_r2']:.4f}",
+            f"{test_df['r2'].std():.4f}",
+            '10',
+            f"Lần {best_model_info['run_id'] + 1}",
+            f"{comparison_results['cv_results']['test_r2'].mean():.4f}",
+            f"{comparison_results['cv_results']['test_rmse'].mean():.4f}",
+            f"{comparison_results['cv_results']['test_mae'].mean():.4f}",
+        ],
+        'Đánh giá': [
+            status_text(test_df['r2'].mean() > 0.9),
+            status_text(test_df['rmse'].mean() < 5),
+            status_text(test_df['mae'].mean() < 4),
+            status_text(test_df['medae'].mean() < 4),
+            status_text(test_df['max_error'].mean() < 10),
+            status_text(test_df['mape'].mean() < 5),
+            status_text(test_df['explained_variance'].mean() > 0.9),
+            'Mốc tham chiếu',
+            status_text(test_df['r2'].std() < 0.02, good='Ổn định', caution='Biến động'),
+            'Số lần chạy cố định',
+            'Đã chọn',
+            status_text(comparison_results['cv_results']['test_r2'].mean() > 0.9),
+            status_text(comparison_results['cv_results']['test_rmse'].mean() < 5),
+            status_text(comparison_results['cv_results']['test_mae'].mean() < 4),
+        ]
     }
     pd.DataFrame(summary_data).to_excel(writer, sheet_name='Tổng quan', index=False)
 
@@ -80,17 +103,24 @@ def save_model_comparison_sheet(writer, comparison_results):
     """Lưu sheet so sánh mô hình"""
     dt_metrics = comparison_results['decision_tree']['metrics']
     rf_metrics = comparison_results['random_forest']['metrics']
-    knn_metrics = comparison_results['knn']['metrics']
-    
+
+    models = ['Decision Tree', 'Random Forest']
+    metrics = [dt_metrics, rf_metrics]
+
+    if 'neural_network' in comparison_results:
+        models.append('Neural Network')
+        metrics.append(comparison_results['neural_network']['metrics'])
+
     model_comparison = {
-        'Mô hình': ['Decision Tree', 'Random Forest', 'KNN'],
-        'R²': [dt_metrics['r2'], rf_metrics['r2'], knn_metrics['r2']],
-        'RMSE': [dt_metrics['rmse'], rf_metrics['rmse'], knn_metrics['rmse']],
-        'MAE': [dt_metrics['mae'], rf_metrics['mae'], knn_metrics['mae']],
-        'MAPE': [f"{dt_metrics['mape']:.2f}%", f"{rf_metrics['mape']:.2f}%", f"{knn_metrics['mape']:.2f}%"],
-        'Đánh giá': [f"{'✅ Tốt' if dt_metrics['r2'] > 0.9 else '⚠️ Khá'}",
-                    f"{'✅ Tốt' if rf_metrics['r2'] > 0.9 else '⚠️ Khá'}",
-                    f"{'✅ Tốt' if knn_metrics['r2'] > 0.9 else '⚠️ Khá'}"]
+        'Mô hình': models,
+        'R²': [m['r2'] for m in metrics],
+        'RMSE': [m['rmse'] for m in metrics],
+        'MAE': [m['mae'] for m in metrics],
+        'Median AE': [m['medae'] for m in metrics],
+        'Max Error': [m['max_error'] for m in metrics],
+        'MAPE (%)': [m['mape'] for m in metrics],
+        'Explained Variance': [m['explained_variance'] for m in metrics],
+        'Đánh giá': ["Tốt" if m['r2'] > 0.9 else "Cần theo dõi" for m in metrics]
     }
     pd.DataFrame(model_comparison).to_excel(writer, sheet_name='So sánh mô hình', index=False)
 

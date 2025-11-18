@@ -12,6 +12,7 @@ def create_all_visualizations(train_df, test_df, feature_importance_df, best_mod
     
     # 1. Biểu đồ so sánh mô hình
     create_model_comparison_chart(comparison_results)
+    create_metric_comparison_chart(comparison_results)
     
     # 2. Biểu đồ feature importance
     create_feature_importance_chart(feature_importance_df)
@@ -39,17 +40,21 @@ def create_all_visualizations(train_df, test_df, feature_importance_df, best_mod
 
 def create_model_comparison_chart(comparison_results):
     """Biểu đồ so sánh các mô hình"""
-    print("\n📊 1. Biểu đồ so sánh mô hình")
+    print("\n1. Biểu đồ so sánh mô hình")
     comparison_path = os.path.join('img', 'model_comparison.png')
     
     plt.figure(figsize=(10, 6))
-    models = ['Decision Tree', 'Random Forest', 'KNN']
+    models = ['Decision Tree', 'Random Forest']
     r2_scores = [
         comparison_results['decision_tree']['metrics']['r2'],
-        comparison_results['random_forest']['metrics']['r2'],
-        comparison_results['knn']['metrics']['r2']
+        comparison_results['random_forest']['metrics']['r2']
     ]
-    colors = ['#2ECC71', '#3498DB', '#9B59B6']
+    colors = ['#2ECC71', '#3498DB']
+
+    if 'neural_network' in comparison_results:
+        models.append('Neural Network')
+        r2_scores.append(comparison_results['neural_network']['metrics']['r2'])
+        colors.append('#9B59B6')
     
     bars = plt.bar(models, r2_scores, color=colors, alpha=0.8, edgecolor='black')
     plt.ylabel('R² Score', fontsize=12)
@@ -64,11 +69,90 @@ def create_model_comparison_chart(comparison_results):
     plt.tight_layout()
     plt.savefig(comparison_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"   ✅ Đã lưu: {comparison_path}")
+    print(f"   Đã lưu: {comparison_path}")
+
+def create_metric_comparison_chart(comparison_results):
+    """Vẽ các biểu đồ so sánh chi tiết từng metric đánh giá."""
+    print("2. Biểu đồ so sánh các chỉ số đánh giá")
+    metric_path = os.path.join('img', 'metric_comparison.png')
+
+    available_models = []
+    model_colors = []
+    metrics_per_model = {
+        'r2': [],
+        'rmse': [],
+        'mae': [],
+        'medae': [],
+        'max_error': [],
+        'mape': [],
+        'explained_variance': [],
+    }
+
+    model_entries = [
+        ('decision_tree', 'Decision Tree', '#2ECC71'),
+        ('random_forest', 'Random Forest', '#3498DB'),
+        ('neural_network', 'Neural Network', '#9B59B6'),
+    ]
+
+    for key, label, color in model_entries:
+        if key not in comparison_results:
+            continue
+        available_models.append(label)
+        model_colors.append(color)
+        metrics = comparison_results[key]['metrics']
+        for metric_key in metrics_per_model:
+            metrics_per_model[metric_key].append(metrics[metric_key])
+
+    if not available_models:
+        print("   Không có dữ liệu để vẽ biểu đồ chỉ số")
+        return
+
+    metric_info = [
+        ('r2', 'R² Score (cao hơn tốt hơn)', True),
+        ('explained_variance', 'Explained Variance', True),
+        ('rmse', 'RMSE (thấp hơn tốt hơn)', False),
+        ('mae', 'MAE (thấp hơn tốt hơn)', False),
+        ('medae', 'Median AE (thấp hơn tốt hơn)', False),
+        ('max_error', 'Max Error (thấp hơn tốt hơn)', False),
+        ('mape', 'MAPE % (thấp hơn tốt hơn)', False),
+    ]
+
+    cols = 3
+    rows = int(np.ceil(len(metric_info) / cols))
+    plt.figure(figsize=(6 * cols, 4 * rows))
+
+    axis_labels = {
+        'r2': 'R²',
+        'explained_variance': 'Explained Variance',
+        'rmse': 'RMSE',
+        'mae': 'MAE',
+        'medae': 'Median AE',
+        'max_error': 'Max Error',
+        'mape': 'MAPE (%)',
+    }
+
+    for idx, (metric_key, title, higher_is_better) in enumerate(metric_info, start=1):
+        plt.subplot(rows, cols, idx)
+        values = metrics_per_model[metric_key]
+        bars = plt.bar(available_models, values, color=model_colors, alpha=0.8, edgecolor='black')
+        plt.title(title, fontweight='bold')
+        plt.ylabel(axis_labels.get(metric_key, metric_key.upper()))
+        text_va = 'bottom'
+        if not higher_is_better:
+            plt.ylabel(f"{axis_labels.get(metric_key, metric_key.upper())} (giá trị nhỏ tốt)")
+        plt.grid(True, alpha=0.2)
+        for bar, value in zip(bars, values):
+            plt.text(bar.get_x() + bar.get_width() / 2, value, f"{value:.4f}",
+                     ha='center', va=text_va, fontsize=9)
+
+    plt.tight_layout()
+    plt.savefig(metric_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"   Đã lưu: {metric_path}")
 
 def create_feature_importance_chart(feature_importance_df):
     """Biểu đồ feature importance"""
-    print("📊 2. Biểu đồ feature importance")
+    print("3. Biểu đồ feature importance")
     feature_img_path = os.path.join('img', 'feature_importance.png')
     
     plt.figure(figsize=(10, 6))
@@ -92,11 +176,11 @@ def create_feature_importance_chart(feature_importance_df):
     plt.tight_layout()
     plt.savefig(feature_img_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"   ✅ Đã lưu: {feature_img_path}")
+    print(f"   Đã lưu: {feature_img_path}")
 
 def create_actual_vs_predicted_chart(best_model_info, comparison_results):
     """Biểu đồ so sánh giá trị thực và dự đoán"""
-    print("📊 3. Biểu đồ Actual vs Predicted")
+    print("4. Biểu đồ Actual vs Predicted")
     actual_pred_path = os.path.join('img', 'actual_vs_predicted.png')
     
     plt.figure(figsize=(15, 5))
@@ -124,25 +208,26 @@ def create_actual_vs_predicted_chart(best_model_info, comparison_results):
     plt.title(f'Random Forest\nR² = {rf_r2:.3f}')
     plt.grid(True, alpha=0.3)
     
-    # KNN
-    plt.subplot(1, 3, 3)
-    y_pred_knn = comparison_results['knn']['predictions']
-    knn_r2 = comparison_results['knn']['metrics']['r2']
-    plt.scatter(y_test, y_pred_knn, alpha=0.6, s=30, color='purple')
-    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
-    plt.xlabel('Giá trị thực tế')
-    plt.ylabel('Giá trị dự đoán')
-    plt.title(f'KNN\nR² = {knn_r2:.3f}')
-    plt.grid(True, alpha=0.3)
+    # Neural Network (nếu có)
+    if 'neural_network' in comparison_results:
+        plt.subplot(1, 3, 3)
+        y_pred_nn = comparison_results['neural_network']['predictions']
+        nn_r2 = comparison_results['neural_network']['metrics']['r2']
+        plt.scatter(y_test, y_pred_nn, alpha=0.6, s=30, color='#9B59B6')
+        plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
+        plt.xlabel('Giá trị thực tế')
+        plt.ylabel('Giá trị dự đoán')
+        plt.title(f'Neural Network\nR² = {nn_r2:.3f}')
+        plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
     plt.savefig(actual_pred_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"   ✅ Đã lưu: {actual_pred_path}")
+    print(f"   Đã lưu: {actual_pred_path}")
 
 def create_summary_plots(train_df, test_df, comparison_results):
     """Biểu đồ tổng hợp kết quả"""
-    print("📊 4. Biểu đồ tổng hợp 10 lần chạy")
+    print("5. Biểu đồ tổng hợp 10 lần chạy")
     summary_plots_path = os.path.join('img', 'summary_plots.png')
     
     plt.figure(figsize=(20, 12))
@@ -202,13 +287,17 @@ def create_summary_plots(train_df, test_df, comparison_results):
     
     # Biểu đồ 5: So sánh 3 mô hình
     plt.subplot(2, 3, 5)
-    models_compare = ['DT', 'RF', 'KNN']
+    models_compare = ['DT', 'RF']
     r2_compare = [
         comparison_results['decision_tree']['metrics']['r2'],
-        comparison_results['random_forest']['metrics']['r2'],
-        comparison_results['knn']['metrics']['r2']
+        comparison_results['random_forest']['metrics']['r2']
     ]
-    plt.bar(models_compare, r2_compare, color=['#2ECC71', '#3498DB', '#9B59B6'])
+    colors = ['#2ECC71', '#3498DB']
+    if 'neural_network' in comparison_results:
+        models_compare.append('NN')
+        r2_compare.append(comparison_results['neural_network']['metrics']['r2'])
+        colors.append('#9B59B6')
+    plt.bar(models_compare, r2_compare, color=colors)
     plt.ylabel('R² Score')
     plt.title('SO SÁNH 3 MÔ HÌNH', fontweight='bold')
     for i, v in enumerate(r2_compare):
@@ -231,15 +320,17 @@ def create_summary_plots(train_df, test_df, comparison_results):
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(summary_plots_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"   ✅ Đã lưu: {summary_plots_path}")
+    print(f"   Đã lưu: {summary_plots_path}")
 def create_residuals_analysis(best_model_info, comparison_results):
     """Phân tích sai số (residuals analysis)"""
-    print("📊 5. Phân tích sai số")
+    print("6. Phân tích sai số")
     
     y_test = best_model_info['y_test']
     residuals_dt = y_test - best_model_info['y_pred_test']
     residuals_rf = y_test - comparison_results['random_forest']['predictions']
-    residuals_knn = y_test - comparison_results['knn']['predictions']
+    residuals_nn = None
+    if 'neural_network' in comparison_results:
+        residuals_nn = y_test - comparison_results['neural_network']['predictions']
     
     residuals_path = os.path.join('img', 'residuals_analysis.png')
     plt.figure(figsize=(18, 12))
@@ -263,21 +354,25 @@ def create_residuals_analysis(best_model_info, comparison_results):
     plt.title(f'Random Forest\nStd: {residuals_rf.std():.3f}')
     plt.grid(True, alpha=0.3)
     
-    # Biểu đồ 3: Residuals vs Predicted cho KNN
+    # Biểu đồ 3: Residuals vs Predicted cho Neural Network
     plt.subplot(2, 3, 3)
-    y_pred_knn = comparison_results['knn']['predictions']
-    plt.scatter(y_pred_knn, residuals_knn, alpha=0.6, s=30, color='purple')
-    plt.axhline(y=0, color='red', linestyle='--', linewidth=2)
-    plt.xlabel('Giá trị dự đoán')
-    plt.ylabel('Sai số (Residuals)')
-    plt.title(f'KNN\nStd: {residuals_knn.std():.3f}')
-    plt.grid(True, alpha=0.3)
+    if residuals_nn is not None:
+        y_pred_nn = comparison_results['neural_network']['predictions']
+        plt.scatter(y_pred_nn, residuals_nn, alpha=0.6, s=30, color='#9B59B6')
+        plt.axhline(y=0, color='red', linestyle='--', linewidth=2)
+        plt.xlabel('Giá trị dự đoán')
+        plt.ylabel('Sai số (Residuals)')
+        plt.title(f'Neural Network\nStd: {residuals_nn.std():.3f}')
+        plt.grid(True, alpha=0.3)
+    else:
+        plt.axis('off')
     
     # Biểu đồ 4: Phân phối residuals
     plt.subplot(2, 3, 4)
     plt.hist(residuals_dt, bins=30, alpha=0.7, label=f'DT (std: {residuals_dt.std():.3f})', color='blue')
     plt.hist(residuals_rf, bins=30, alpha=0.7, label=f'RF (std: {residuals_rf.std():.3f})', color='green')
-    plt.hist(residuals_knn, bins=30, alpha=0.7, label=f'KNN (std: {residuals_knn.std():.3f})', color='purple')
+    if residuals_nn is not None:
+        plt.hist(residuals_nn, bins=30, alpha=0.7, label=f'NN (std: {residuals_nn.std():.3f})', color='#9B59B6')
     plt.xlabel('Sai số (Residuals)')
     plt.ylabel('Tần suất')
     plt.title('PHÂN PHỐI SAI SỐ CỦA CÁC MÔ HÌNH')
@@ -291,9 +386,14 @@ def create_residuals_analysis(best_model_info, comparison_results):
     
     # Biểu đồ 6: So sánh độ lớn sai số
     plt.subplot(2, 3, 6)
-    residuals_abs = [np.abs(residuals_dt).mean(), np.abs(residuals_rf).mean(), np.abs(residuals_knn).mean()]
-    models_resid = ['Decision Tree', 'Random Forest', 'KNN']
-    bars = plt.bar(models_resid, residuals_abs, color=['blue', 'green', 'purple'], alpha=0.7)
+    residuals_abs = [np.abs(residuals_dt).mean(), np.abs(residuals_rf).mean()]
+    models_resid = ['Decision Tree', 'Random Forest']
+    colors = ['blue', 'green']
+    if residuals_nn is not None:
+        residuals_abs.append(np.abs(residuals_nn).mean())
+        models_resid.append('Neural Network')
+        colors.append('#9B59B6')
+    bars = plt.bar(models_resid, residuals_abs, color=colors, alpha=0.7)
     plt.ylabel('Sai số tuyệt đối trung bình (MAE)')
     plt.title('SO SÁNH ĐỘ LỚN SAI SỐ')
     for bar, value in zip(bars, residuals_abs):
@@ -304,17 +404,18 @@ def create_residuals_analysis(best_model_info, comparison_results):
     plt.tight_layout()
     plt.savefig(residuals_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"   ✅ Đã lưu: {residuals_path}")
+    print(f"   Đã lưu: {residuals_path}")
     
     # Phân tích thống kê residuals
-    print(f"\n📊 PHÂN TÍCH THỐNG KÊ SAI SỐ:")
+    print(f"\nPHÂN TÍCH THỐNG KÊ SAI SỐ:")
     print(f"    Decision Tree: Mean = {residuals_dt.mean():.4f}, Std = {residuals_dt.std():.4f}")
     print(f"    Random Forest: Mean = {residuals_rf.mean():.4f}, Std = {residuals_rf.std():.4f}")
-    print(f"    KNN:           Mean = {residuals_knn.mean():.4f}, Std = {residuals_knn.std():.4f}")
+    if residuals_nn is not None:
+        print(f"    Neural Network: Mean = {residuals_nn.mean():.4f}, Std = {residuals_nn.std():.4f}")
 
 def create_learning_curves(best_model_info, comparison_results, X_scaled, y):
     """Tạo learning curves"""
-    print("📊 6. Learning Curves")
+    print("7. Learning Curves")
     
     print("Đang vẽ và lưu learning curves...")
     plot_and_save_learning_curve(best_model_info['model'], "Decision Tree (Best Model)", 
@@ -353,11 +454,11 @@ def plot_and_save_learning_curve(estimator, title, filename, X, y, cv=5):
     plt.savefig(filepath, dpi=300, bbox_inches='tight')
     plt.close()
     
-    print(f"   ✅ Đã lưu: {filepath}")
+    print(f"   Đã lưu: {filepath}")
 
 def create_detailed_comparison_plots(train_df, test_df, best_model_info):
     """Biểu đồ so sánh chi tiết 10 lần lặp"""
-    print("📊 7. Biểu đồ so sánh chi tiết 10 lần lặp")
+    print("8. Biểu đồ so sánh chi tiết 10 lần lặp")
     
     comparison_10_runs_path = os.path.join('img', 'comparison_10_runs.png')
     plt.figure(figsize=(18, 12))
@@ -488,11 +589,11 @@ def create_detailed_comparison_plots(train_df, test_df, best_model_info):
     plt.tight_layout()
     plt.savefig(comparison_10_runs_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"   ✅ Đã lưu: {comparison_10_runs_path}")
+    print(f"   Đã lưu: {comparison_10_runs_path}")
 
 def create_detailed_runs_analysis(train_df, test_df, best_model_info):
     """Biểu đồ chi tiết từng lần chạy"""
-    print("📊 8. Biểu đồ chi tiết từng lần chạy")
+    print("9. Biểu đồ chi tiết từng lần chạy")
     
     # Định nghĩa các bộ tham số (giống trong model_trainer)
     param_sets = [
@@ -649,11 +750,19 @@ def create_detailed_runs_analysis(train_df, test_df, best_model_info):
         'R²': test_df['r2'].std(),
         'RMSE': test_df['rmse'].std(),
         'MAE': test_df['mae'].std(),
-        'MAPE': test_df['mape'].std()
+        'Median AE': test_df['medae'].std(),
+        'Max Error': test_df['max_error'].std(),
+        'MAPE': test_df['mape'].std(),
+        'Explained Var': test_df['explained_variance'].std(),
     }
     
-    plt.bar(metrics_variability.keys(), metrics_variability.values(),
-            color=['#2ECC71', '#3498DB', '#9B59B6', '#E67E22'], alpha=0.7)
+    variability_colors = ['#2ECC71', '#3498DB', '#9B59B6', '#E67E22', '#8E44AD', '#1ABC9C', '#34495E']
+    plt.bar(
+        metrics_variability.keys(),
+        metrics_variability.values(),
+        color=variability_colors[:len(metrics_variability)],
+        alpha=0.7,
+    )
     plt.ylabel('Độ lệch chuẩn')
     plt.title('ĐỘ BIẾN ĐỘNG CÁC CHỈ SỐ', fontweight='bold')
     plt.grid(True, alpha=0.3)
@@ -675,18 +784,18 @@ def create_detailed_runs_analysis(train_df, test_df, best_model_info):
     plt.xticks(range(1, 11), [f'#{int(r)}' for r in ranking], rotation=45)
     
     for i, (r2, rank) in enumerate(zip(test_df['r2'], ranking)):
-        medal = '🥇' if rank == 1 else '🥈' if rank == 2 else '🥉' if rank == 3 else ''
-        plt.text(i+1, r2 + 0.002, f'{r2:.3f}\n{medal}', ha='center', va='bottom', 
+        label = f'Top {int(rank)}' if rank <= 3 else ''
+        plt.text(i+1, r2 + 0.002, f'{r2:.4f}\n{label}', ha='center', va='bottom', 
                  fontsize=8, fontweight='bold')
     
     plt.tight_layout()
     plt.savefig(detailed_runs_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"   ✅ Đã lưu: {detailed_runs_path}")
+    print(f"   Đã lưu: {detailed_runs_path}")
 
 def plot_decision_tree(best_model_info):
     """Vẽ và lưu cây quyết định"""
-    print(f"\n🌳 9. Vẽ và lưu cây quyết định")
+    print(f"\n10. Vẽ và lưu cây quyết định")
     
     tree_path = os.path.join('img', 'decision_tree.png')
     plt.figure(figsize=(25, 12))
@@ -704,4 +813,4 @@ def plot_decision_tree(best_model_info):
     plt.tight_layout()
     plt.savefig(tree_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"   ✅ Đã lưu: {tree_path}")
+    print(f"   Đã lưu: {tree_path}")

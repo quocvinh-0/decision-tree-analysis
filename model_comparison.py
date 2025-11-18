@@ -1,11 +1,20 @@
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.model_selection import GridSearchCV, cross_validate
+from sklearn.model_selection import cross_validate
+from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import StandardScaler
 from model_trainer import calculate_metrics
 
-def compare_with_other_models(X_train_best, X_test_best, y_train_best, y_test_best, best_model):
+def compare_with_other_models(
+    X_train_best,
+    X_test_best,
+    y_train_best,
+    y_test_best,
+    best_model,
+    X_train_scaled=None,
+    X_test_scaled=None,
+):
     """
     So sánh Decision Tree với các mô hình khác
     
@@ -37,52 +46,73 @@ def compare_with_other_models(X_train_best, X_test_best, y_train_best, y_test_be
         'model': rf_model
     }
     
-    # SO SÁNH VỚI KNN
-    print("\n🔍 SO SÁNH THÊM VỚI KNN REGRESSOR (TỐI ƯU HÓA THAM SỐ)")
-    knn_metrics, best_knn = train_optimized_knn(X_train_best, X_test_best, y_train_best, y_test_best)
-    comparison_results['knn'] = {
-        'metrics': knn_metrics,
-        'predictions': knn_metrics.get('predictions'),
-        'model': best_knn
+    # SO SÁNH VỚI MẠNG NƠ-RON (NEURAL NETWORK)
+    print("\nSO SÁNH THÊM VỚI MẠNG NƠ-RON (MLPRegressor)")
+
+    scaler_used = None
+    if X_train_scaled is None or X_test_scaled is None:
+        scaler_used = StandardScaler()
+        X_train_scaled = scaler_used.fit_transform(X_train_best)
+        X_test_scaled = scaler_used.transform(X_test_best)
+        print("   Đã chuẩn hóa dữ liệu cho mạng nơ-ron")
+    else:
+        print("   Sử dụng dữ liệu đã chuẩn hóa sẵn cho mạng nơ-ron")
+
+    nn_metrics, nn_model = train_neural_network(
+        X_train_scaled, X_test_scaled, y_train_best, y_test_best
+    )
+
+    comparison_results['neural_network'] = {
+        'metrics': nn_metrics,
+        'predictions': nn_metrics.get('predictions'),
+        'model': nn_model,
+        'scaler': scaler_used,
     }
     
     # Cross-validation cho mô hình tốt nhất
-    print("\n🔄 ĐÁNH GIÁ ĐỘ ỔN ĐỊNH VỚI CROSS-VALIDATION (5-fold)")
+    print("\nĐÁNH GIÁ ĐỘ ỔN ĐỊNH VỚI CROSS-VALIDATION (5-fold)")
     cv_results = perform_cross_validation(best_model, X_train_best, y_train_best)
     comparison_results['cv_results'] = cv_results
     
     # In kết quả so sánh
-    print_comparison_results(dt_metrics_best, rf_metrics, knn_metrics, cv_results)
+    print_comparison_results(dt_metrics_best, rf_metrics, nn_metrics, cv_results)
     
     return comparison_results
 
-def train_optimized_knn(X_train, X_test, y_train, y_test):
-    """Huấn luyện KNN với tối ưu hóa tham số"""
-    knn_param_grid = {
-        'n_neighbors': [3, 5, 7, 9, 11, 15],
-        'weights': ['uniform', 'distance'],
-        'metric': ['euclidean', 'manhattan', 'minkowski']
+def train_neural_network(X_train, X_test, y_train, y_test):
+    """Huấn luyện MLPRegressor với bộ tham số cố định (không GridSearch)."""
+
+    fixed_params = {
+        'hidden_layer_sizes': (128, 64),
+        'activation': 'relu',
+        'alpha': 0.001,
+        'learning_rate_init': 0.0005,
+        'max_iter': 1000,
+        'early_stopping': True,
+        'n_iter_no_change': 30,
+        'tol': 1e-4,
+        'random_state': 42,
     }
-    
-    knn_grid = GridSearchCV(
-        KNeighborsRegressor(), knn_param_grid, cv=5, 
-        scoring='r2', n_jobs=-1, verbose=0
-    )
-    
-    print("Đang tìm tham số tối ưu cho KNN...")
-    knn_grid.fit(X_train, y_train)
-    
-    best_knn = knn_grid.best_estimator_
-    y_pred_knn = best_knn.predict(X_test)
-    knn_metrics = calculate_metrics(y_test, y_pred_knn)
-    knn_metrics['predictions'] = y_pred_knn
-    
-    print(f"\n✅ KNN Regressor (ĐÃ TỐI ƯU):")
-    print(f"    Tham số tốt nhất: {knn_grid.best_params_}")
-    print(f"    R²:   {knn_metrics['r2']:.4f}")
-    print(f"    RMSE: {knn_metrics['rmse']:.4f}")
-    
-    return knn_metrics, best_knn
+
+    print("   Huấn luyện mạng nơ-ron với bộ tham số đã được cung cấp")
+    nn_model = MLPRegressor(**fixed_params)
+    nn_model.fit(X_train, y_train)
+
+    y_pred_nn = nn_model.predict(X_test)
+    nn_metrics = calculate_metrics(y_test, y_pred_nn)
+    nn_metrics['predictions'] = y_pred_nn
+    nn_metrics['params'] = fixed_params
+
+    print("   Hoàn tất huấn luyện mạng nơ-ron:")
+    print(f"      R²:   {nn_metrics['r2']:.4f}")
+    print(f"      RMSE: {nn_metrics['rmse']:.4f}")
+    print(f"      MAE:  {nn_metrics['mae']:.4f}")
+    print(f"      Median AE: {nn_metrics['medae']:.4f}")
+    print(f"      Max Error: {nn_metrics['max_error']:.4f}")
+    print(f"      MAPE: {nn_metrics['mape']:.2f}%")
+    print(f"      Explained Variance: {nn_metrics['explained_variance']:.4f}")
+
+    return nn_metrics, nn_model
 
 def perform_cross_validation(model, X, y):
     """Thực hiện cross-validation"""
@@ -106,31 +136,28 @@ def perform_cross_validation(model, X, y):
         'test_mae': cv_test_mae
     }
 
-def print_comparison_results(dt_metrics, rf_metrics, knn_metrics, cv_results):
+def print_comparison_results(dt_metrics, rf_metrics, nn_metrics, cv_results):
     """In kết quả so sánh các mô hình"""
     print("\n SO SÁNH HIỆU SUẤT TRÊN TẬP TEST TỐT NHẤT:")
-    print(f"    Decision Tree (tốt nhất):")
-    print(f"       R²:   {dt_metrics['r2']:.4f}")
-    print(f"       RMSE: {dt_metrics['rmse']:.4f}")
-    print(f"       MAE:  {dt_metrics['mae']:.4f}")
-    print(f"       MAPE: {dt_metrics['mape']:.2f}%")
+    for label, metrics in (
+        ("Decision Tree (tốt nhất)", dt_metrics),
+        ("Random Forest", rf_metrics),
+        ("Mạng nơ-ron (MLPRegressor)", nn_metrics),
+    ):
+        print(f"    {label}:")
+        print(f"       R²:                {metrics['r2']:.4f}")
+        print(f"       RMSE:              {metrics['rmse']:.4f}")
+        print(f"       MAE:               {metrics['mae']:.4f}")
+        print(f"       Median AE:         {metrics['medae']:.4f}")
+        print(f"       Max Error:         {metrics['max_error']:.4f}")
+        print(f"       MAPE:              {metrics['mape']:.2f}%")
+        print(f"       Explained Variance:{metrics['explained_variance']:.4f}")
     
-    print(f"    Random Forest:")
-    print(f"       R²:   {rf_metrics['r2']:.4f}")
-    print(f"       RMSE: {rf_metrics['rmse']:.4f}")
-    print(f"       MAE:  {rf_metrics['mae']:.4f}")
-    print(f"       MAPE: {rf_metrics['mape']:.2f}%")
-    
-    print(f"    KNN (tối ưu):")
-    print(f"       R²:   {knn_metrics['r2']:.4f}")
-    print(f"       RMSE: {knn_metrics['rmse']:.4f}")
-    print(f"       MAE:  {knn_metrics['mae']:.4f}")
-    print(f"       MAPE: {knn_metrics['mape']:.2f}%")
-    
-    print(f"\n📊 KẾT QUẢ CROSS-VALIDATION (5-fold):")
+    print(f"\nKẾT QUẢ CROSS-VALIDATION (5-fold):")
     print(f"    Train R²:     {cv_results['train_r2'].mean():.4f} (±{cv_results['train_r2'].std():.4f})")
     print(f"    Test R²:      {cv_results['test_r2'].mean():.4f} (±{cv_results['test_r2'].std():.4f})")
     print(f"    Test RMSE:    {cv_results['test_rmse'].mean():.4f} (±{cv_results['test_rmse'].std():.4f})")
+    print(f"    Test MAE:     {cv_results['test_mae'].mean():.4f} (±{cv_results['test_mae'].std():.4f})")
     
     cv_stability = "RẤT ỔN ĐỊNH" if cv_results['test_r2'].std() < 0.02 else "KHÁ ỔN ĐỊNH" if cv_results['test_r2'].std() < 0.05 else "CÓ BIẾN ĐỘNG"
     print(f"    Độ ổn định:    {cv_stability} (độ lệch chuẩn: {cv_results['test_r2'].std():.4f})")

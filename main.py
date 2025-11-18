@@ -1,17 +1,8 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_validate
-from sklearn.tree import DecisionTreeRegressor, plot_tree
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import GridSearchCV
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
-import joblib
-from scipy import stats
 import warnings
+
 warnings.filterwarnings('ignore')
 
 # Import các module tùy chỉnh
@@ -29,7 +20,7 @@ def main():
     # ============================
     os.makedirs('img', exist_ok=True)
     os.makedirs('result', exist_ok=True)
-    print("✅ Đã tạo thư mục 'img' và 'result'")
+    print("Đã tạo thư mục 'img' và 'result'")
     
     # ============================
     # BƯỚC 1: ĐỌC VÀ TIỀN XỬ LÝ DỮ LIỆU
@@ -63,7 +54,7 @@ def main():
     # ============================
     # BƯỚC 4: TRỰC QUAN HÓA KẾT QUẢ
     # ============================
-    print("\n🎨 BẮT ĐẦU TRỰC QUAN HÓA KẾT QUẢ")
+    print("\nBẮT ĐẦU TRỰC QUAN HÓA KẾT QUẢ")
     
     create_all_visualizations(
         train_df, test_df, feature_importance_df, best_model_info, 
@@ -73,7 +64,7 @@ def main():
     # ============================
     # BƯỚC 5: LƯU KẾT QUẢ
     # ============================
-    print("\n📊 LƯU KẾT QUẢ VÀO FILE")
+    print("\nLƯU KẾT QUẢ VÀO FILE")
     
     save_results(
         train_df, test_df, feature_importance_df, best_model_info,
@@ -88,7 +79,7 @@ def main():
 def print_final_summary(test_df, best_model_info, feature_importance_df):
     """In tổng kết cuối cùng"""
     print("\n" + "="*60)
-    print("🎯 TỔNG KẾT KẾT QUẢ")
+    print("TỔNG KẾT KẾT QUẢ")
     print("="*60)
     
     # Đánh giá chất lượng tổng thể
@@ -96,39 +87,43 @@ def print_final_summary(test_df, best_model_info, feature_importance_df):
     std_test_r2 = test_df['r2'].std()
     
     if avg_test_r2 > 0.95 and std_test_r2 < 0.01:
-        stability = "RẤT ỔN ĐỊNH VÀ XUẤT SẮC 🏆"
+        stability = "Rất ổn định và xuất sắc"
     elif avg_test_r2 > 0.9 and std_test_r2 < 0.02:
-        stability = "ỔN ĐỊNH VÀ TỐT ✅"
+        stability = "Ổn định và tốt"
     elif avg_test_r2 > 0.85:
-        stability = "KHÁ ỔN ĐỊNH 📊"
+        stability = "Khá ổn định"
     else:
-        stability = "CẦN CẢI THIỆN ⚠️"
+        stability = "Cần cải thiện"
     
-    print(f"\n📈 KẾT QUẢ TỔNG HỢP:")
-    print(f"   • Số lần huấn luyện: 10")
-    print(f"   • Số bộ tham số khác nhau: 10")
-    print(f"   • Mô hình tốt nhất đạt Test R²: {best_model_info['test_r2']:.4f}")
+    print(f"\nKẾT QUẢ TỔNG HỢP:")
+    print(f"   - Số lần huấn luyện: 10")
+    print(f"   - Số bộ tham số khác nhau: 10")
+    print(f"   - Mô hình tốt nhất đạt Test R²: {best_model_info['test_r2']:.4f}")
     
-    print(f"\n📊 CHẤT LƯỢNG TRUNG BÌNH (10 lần):")
-    print(f"   • R² trung bình: {avg_test_r2:.4f} (±{std_test_r2:.4f})")
-    print(f"   • RMSE trung bình: {test_df['rmse'].mean():.4f} (±{test_df['rmse'].std():.4f})")
-    print(f"   • MAE trung bình: {test_df['mae'].mean():.4f} (±{test_df['mae'].std():.4f})")
-    print(f"   • Độ ổn định: {stability}")
+    print(f"\nCHẤT LƯỢNG TRUNG BÌNH (10 lần):")
+    print(f"   - R² trung bình: {avg_test_r2:.4f} (±{std_test_r2:.4f})")
+    print(f"   - RMSE trung bình: {test_df['rmse'].mean():.4f} (±{test_df['rmse'].std():.4f})")
+    print(f"   - MAE trung bình: {test_df['mae'].mean():.4f} (±{test_df['mae'].std():.4f})")
+    print(f"   - Median AE trung bình: {test_df['medae'].mean():.4f} (±{test_df['medae'].std():.4f})")
+    print(f"   - Max Error trung bình: {test_df['max_error'].mean():.4f} (±{test_df['max_error'].std():.4f})")
+    print(f"   - MAPE trung bình: {test_df['mape'].mean():.2f}% (±{test_df['mape'].std():.2f}%)")
+    print(f"   - Explained variance trung bình: {test_df['explained_variance'].mean():.4f} (±{test_df['explained_variance'].std():.4f})")
+    print(f"   - Độ ổn định: {stability}")
     
-    print(f"\n🔍 ĐẶC TRƯNG QUAN TRỌNG NHẤT:")
+    print(f"\nĐẶC TRƯNG QUAN TRỌNG NHẤT:")
     best_feature = feature_importance_df.iloc[0]
-    print(f"   • {best_feature['Đặc trưng']}: {best_feature['Độ quan trọng trung bình']:.4f} "
+    print(f"   - {best_feature['Đặc trưng']}: {best_feature['Độ quan trọng trung bình']:.4f} "
           f"(±{best_feature['Độ lệch chuẩn']:.4f})")
     
-    print(f"\n⚙️ BỘ THAM SỐ TỐT NHẤT (Lần {best_model_info['run_id'] + 1}):")
+    print(f"\nBỘ THAM SỐ TỐT NHẤT (Lần {best_model_info['run_id'] + 1}):")
     for key, value in best_model_info['params'].items():
-        print(f"   • {key}: {value if value is not None else 'Không giới hạn'}")
+        print(f"   - {key}: {value if value is not None else 'Không giới hạn'}")
     
-    print(f"\n📁 KẾT QUẢ ĐÃ ĐƯỢC LƯU:")
-    print(f"   • 📊 Ảnh biểu đồ: {len(os.listdir('img'))} file trong thư mục 'img/'")
-    print(f"   • 💾 Model & Data: {len(os.listdir('result'))} file trong thư mục 'result/'")
-    print(f"   • 📈 File Excel: result/results_summary.xlsx")
-    print(f"\n🎉 HOÀN THÀNH PHÂN TÍCH!")
+    print(f"\nKẾT QUẢ ĐÃ ĐƯỢC LƯU:")
+    print(f"   - Ảnh biểu đồ: {len(os.listdir('img'))} file trong thư mục 'img/'")
+    print(f"   - Model & Data: {len(os.listdir('result'))} file trong thư mục 'result/'")
+    print(f"   - File Excel: result/results_summary.xlsx")
+    print("\nHOÀN THÀNH PHÂN TÍCH!")
     print("="*60)
 
 if __name__ == "__main__":

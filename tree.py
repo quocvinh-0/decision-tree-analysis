@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score, cross_validate, learning_curve, GridSearchCV
+from sklearn.model_selection import train_test_split, cross_val_score, cross_validate, learning_curve
 from sklearn.tree import DecisionTreeRegressor, plot_tree
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neural_network import MLPRegressor
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
@@ -136,6 +136,7 @@ for i in range(10):
     # Tạo và huấn luyện mô hình
     dt_model = DecisionTreeRegressor(
         random_state=40 + i,
+        splitter='best',
         **params
     )
     
@@ -296,33 +297,41 @@ print(f"       RMSE: {rf_metrics['rmse']:.4f}")
 print(f"       MAE:  {rf_metrics['mae']:.4f}")
 print(f"       MAPE: {rf_metrics['mape']:.2f}%")
 
-# SO SÁNH VỚI KNN
-print("\n🔍 SO SÁNH THÊM VỚI KNN REGRESSOR (TỐI ƯU HÓA THAM SỐ)")
+# SO SÁNH VỚI MẠNG NƠ-RON
+print("\nSO SÁNH THÊM VỚI MẠNG NƠ-RON (MLPRegressor)")
 
-knn_param_grid = {
-    'n_neighbors': [3, 5, 7, 9, 11, 15],
-    'weights': ['uniform', 'distance'],
-    'metric': ['euclidean', 'manhattan', 'minkowski']
+scaler_nn = StandardScaler()
+X_train_nn = scaler_nn.fit_transform(X_train_best)
+X_test_nn = scaler_nn.transform(X_test_best)
+
+nn_fixed_params = {
+    'hidden_layer_sizes': (128, 64),
+    'activation': 'relu',
+    'alpha': 0.001,
+    'learning_rate_init': 0.0005,
+    'max_iter': 1000,
+    'early_stopping': True,
+    'n_iter_no_change': 30,
+    'tol': 1e-4,
+    'random_state': 42,
 }
 
-knn_grid = GridSearchCV(
-    KNeighborsRegressor(), knn_param_grid, cv=5, 
-    scoring='r2', n_jobs=-1, verbose=0
-)
+print("Huấn luyện mạng nơ-ron với bộ tham số đã cung cấp...")
+best_nn = MLPRegressor(**nn_fixed_params)
+best_nn.fit(X_train_nn, y_train_best)
 
-print("Đang tìm tham số tối ưu cho KNN...")
-knn_grid.fit(X_train_best, y_train_best)
+y_pred_nn = best_nn.predict(X_test_nn)
+nn_metrics = calculate_metrics(y_test_best, y_pred_nn)
 
-best_knn = knn_grid.best_estimator_
-y_pred_knn = best_knn.predict(X_test_best)
-knn_metrics = calculate_metrics(y_test_best, y_pred_knn)
-
-print(f"\n✅ KNN Regressor (ĐÃ TỐI ƯU):")
-print(f"    Tham số tốt nhất: {knn_grid.best_params_}")
-print(f"    R²:   {knn_metrics['r2']:.4f}")
-print(f"    RMSE: {knn_metrics['rmse']:.4f}")
-print(f"    MAE:  {knn_metrics['mae']:.4f}")
-print(f"    MAPE: {knn_metrics['mape']:.2f}%")
+print("\nNeural Network (MLP) với tham số cố định:")
+print(f"    hidden_layer_sizes: {nn_fixed_params['hidden_layer_sizes']}")
+print(f"    activation: {nn_fixed_params['activation']}")
+print(f"    alpha: {nn_fixed_params['alpha']}")
+print(f"    learning_rate_init: {nn_fixed_params['learning_rate_init']}")
+print(f"    R²:   {nn_metrics['r2']:.4f}")
+print(f"    RMSE: {nn_metrics['rmse']:.4f}")
+print(f"    MAE:  {nn_metrics['mae']:.4f}")
+print(f"    MAPE: {nn_metrics['mape']:.2f}%")
 
 # ============================
 # BƯỚC 7: TRỰC QUAN HÓA KẾT QUẢ
@@ -333,8 +342,8 @@ print("\n🎨 BẮT ĐẦU TRỰC QUAN HÓA KẾT QUẢ")
 print("\n📊 1. Biểu đồ so sánh mô hình")
 comparison_path = os.path.join('img', 'model_comparison.png')
 plt.figure(figsize=(10, 6))
-models = ['Decision Tree', 'Random Forest', 'KNN']
-r2_scores = [dt_metrics_best['r2'], rf_metrics['r2'], knn_metrics['r2']]
+models = ['Decision Tree', 'Random Forest', 'Neural Network']
+r2_scores = [dt_metrics_best['r2'], rf_metrics['r2'], nn_metrics['r2']]
 colors = ['#2ECC71', '#3498DB', '#9B59B6']
 
 bars = plt.bar(models, r2_scores, color=colors, alpha=0.8, edgecolor='black')
@@ -400,11 +409,11 @@ plt.title(f'Random Forest\nR² = {rf_metrics["r2"]:.4f}')
 plt.grid(True, alpha=0.3)
 
 plt.subplot(1, 3, 3)
-plt.scatter(y_test_best, y_pred_knn, alpha=0.6, s=30, color='purple')
+plt.scatter(y_test_best, y_pred_nn, alpha=0.6, s=30, color='#9B59B6')
 plt.plot([y_test_best.min(), y_test_best.max()], [y_test_best.min(), y_test_best.max()], 'r--', lw=2)
 plt.xlabel('Giá trị thực tế')
 plt.ylabel('Giá trị dự đoán')
-plt.title(f'KNN\nR² = {knn_metrics["r2"]:.4f}')
+plt.title(f'Neural Network\nR² = {nn_metrics["r2"]:.4f}')
 plt.grid(True, alpha=0.3)
 
 plt.tight_layout()
@@ -464,8 +473,8 @@ plt.grid(True, alpha=0.3)
 
 # Biểu đồ 5: So sánh 3 mô hình
 plt.subplot(2, 3, 5)
-models_compare = ['DT', 'RF', 'KNN']
-r2_compare = [dt_metrics_best['r2'], rf_metrics['r2'], knn_metrics['r2']]
+models_compare = ['DT', 'RF', 'NN']
+r2_compare = [dt_metrics_best['r2'], rf_metrics['r2'], nn_metrics['r2']]
 plt.bar(models_compare, r2_compare, color=['#2ECC71', '#3498DB', '#9B59B6'])
 plt.ylabel('R² Score')
 plt.title('SO SÁNH 3 MÔ HÌNH', fontweight='bold')
@@ -493,7 +502,7 @@ print(f"   ✅ Đã lưu: {summary_plots_path}")
 print("📊 5. Phân tích sai số")
 residuals_dt = y_test_best - y_pred_dt_best
 residuals_rf = y_test_best - y_pred_rf
-residuals_knn = y_test_best - y_pred_knn
+residuals_nn = y_test_best - y_pred_nn
 
 residuals_path = os.path.join('img', 'residuals_analysis.png')
 plt.figure(figsize=(18, 12))
@@ -516,20 +525,20 @@ plt.ylabel('Sai số (Residuals)')
 plt.title(f'Random Forest\nStd: {residuals_rf.std():.3f}')
 plt.grid(True, alpha=0.3)
 
-# Biểu đồ 3: Residuals vs Predicted cho KNN
+# Biểu đồ 3: Residuals vs Predicted cho Neural Network
 plt.subplot(2, 3, 3)
-plt.scatter(y_pred_knn, residuals_knn, alpha=0.6, s=30, color='purple')
+plt.scatter(y_pred_nn, residuals_nn, alpha=0.6, s=30, color='#9B59B6')
 plt.axhline(y=0, color='red', linestyle='--', linewidth=2)
 plt.xlabel('Giá trị dự đoán')
 plt.ylabel('Sai số (Residuals)')
-plt.title(f'KNN\nStd: {residuals_knn.std():.3f}')
+plt.title(f'Neural Network\nStd: {residuals_nn.std():.3f}')
 plt.grid(True, alpha=0.3)
 
 # Biểu đồ 4: Phân phối residuals
 plt.subplot(2, 3, 4)
 plt.hist(residuals_dt, bins=30, alpha=0.7, label=f'DT (std: {residuals_dt.std():.3f})', color='blue')
 plt.hist(residuals_rf, bins=30, alpha=0.7, label=f'RF (std: {residuals_rf.std():.3f})', color='green')
-plt.hist(residuals_knn, bins=30, alpha=0.7, label=f'KNN (std: {residuals_knn.std():.3f})', color='purple')
+plt.hist(residuals_nn, bins=30, alpha=0.7, label=f'NN (std: {residuals_nn.std():.3f})', color='#9B59B6')
 plt.xlabel('Sai số (Residuals)')
 plt.ylabel('Tần suất')
 plt.title('PHÂN PHỐI SAI SỐ CỦA CÁC MÔ HÌNH')
@@ -543,9 +552,9 @@ plt.title('Q-Q Plot: Decision Tree Residuals')
 
 # Biểu đồ 6: So sánh độ lớn sai số
 plt.subplot(2, 3, 6)
-residuals_abs = [np.abs(residuals_dt).mean(), np.abs(residuals_rf).mean(), np.abs(residuals_knn).mean()]
-models_resid = ['Decision Tree', 'Random Forest', 'KNN']
-bars = plt.bar(models_resid, residuals_abs, color=['blue', 'green', 'purple'], alpha=0.7)
+residuals_abs = [np.abs(residuals_dt).mean(), np.abs(residuals_rf).mean(), np.abs(residuals_nn).mean()]
+models_resid = ['Decision Tree', 'Random Forest', 'Neural Network']
+bars = plt.bar(models_resid, residuals_abs, color=['blue', 'green', '#9B59B6'], alpha=0.7)
 plt.ylabel('Sai số tuyệt đối trung bình (MAE)')
 plt.title('SO SÁNH ĐỘ LỚN SAI SỐ')
 for bar, value in zip(bars, residuals_abs):
@@ -562,7 +571,7 @@ print(f"   ✅ Đã lưu: {residuals_path}")
 print(f"\n📊 PHÂN TÍCH THỐNG KÊ SAI SỐ:")
 print(f"    Decision Tree: Mean = {residuals_dt.mean():.4f}, Std = {residuals_dt.std():.4f}")
 print(f"    Random Forest: Mean = {residuals_rf.mean():.4f}, Std = {residuals_rf.std():.4f}")
-print(f"    KNN:           Mean = {residuals_knn.mean():.4f}, Std = {residuals_knn.std():.4f}")
+print(f"    Neural Network: Mean = {residuals_nn.mean():.4f}, Std = {residuals_nn.std():.4f}")
 
 # 7.6 Learning Curves
 print("📊 6. Learning Curves")
@@ -965,14 +974,19 @@ with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
     
     # Sheet 2: So sánh mô hình
     model_comparison = {
-        'Mô hình': ['Decision Tree', 'Random Forest', 'KNN'],
-        'R²': [dt_metrics_best['r2'], rf_metrics['r2'], knn_metrics['r2']],
-        'RMSE': [dt_metrics_best['rmse'], rf_metrics['rmse'], knn_metrics['rmse']],
-        'MAE': [dt_metrics_best['mae'], rf_metrics['mae'], knn_metrics['mae']],
-        'MAPE': [f"{dt_metrics_best['mape']:.2f}%", f"{rf_metrics['mape']:.2f}%", f"{knn_metrics['mape']:.2f}%"],
-        'Đánh giá': [f"{'✅ Tốt' if dt_metrics_best['r2'] > 0.9 else '⚠️ Khá'}",
-                    f"{'✅ Tốt' if rf_metrics['r2'] > 0.9 else '⚠️ Khá'}",
-                    f"{'✅ Tốt' if knn_metrics['r2'] > 0.9 else '⚠️ Khá'}"]
+        'Mô hình': ['Decision Tree', 'Random Forest', 'Neural Network'],
+        'R²': [dt_metrics_best['r2'], rf_metrics['r2'], nn_metrics['r2']],
+        'RMSE': [dt_metrics_best['rmse'], rf_metrics['rmse'], nn_metrics['rmse']],
+        'MAE': [dt_metrics_best['mae'], rf_metrics['mae'], nn_metrics['mae']],
+        'Median AE': [dt_metrics_best['medae'], rf_metrics['medae'], nn_metrics['medae']],
+        'Max Error': [dt_metrics_best['max_error'], rf_metrics['max_error'], nn_metrics['max_error']],
+        'MAPE (%)': [dt_metrics_best['mape'], rf_metrics['mape'], nn_metrics['mape']],
+        'Explained Variance': [dt_metrics_best['explained_variance'], rf_metrics['explained_variance'], nn_metrics['explained_variance']],
+        'Đánh giá': [
+            'Tốt' if dt_metrics_best['r2'] > 0.9 else 'Cần theo dõi',
+            'Tốt' if rf_metrics['r2'] > 0.9 else 'Cần theo dõi',
+            'Tốt' if nn_metrics['r2'] > 0.9 else 'Cần theo dõi'
+        ]
     }
     pd.DataFrame(model_comparison).to_excel(writer, sheet_name='So sánh mô hình', index=False)
     
