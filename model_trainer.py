@@ -61,11 +61,6 @@ def train_decision_trees(X, y, X_scaled=None, n_runs=10, use_grid_search=True):
 
     _ = X_scaled  # giữ tham số để tương thích, Decision Tree không dùng dữ liệu đã chuẩn hóa
 
-    print("\n==============================================")
-    print("HUẤN LUYỆN DECISION TREE THEO THB3_Decision_Tree.pdf")
-    print("==============================================")
-    print("- Không chuẩn hóa đầu vào (Decision Tree không nhạy thang đo)")
-    print("- Sử dụng GridSearchCV + ccp_alpha pruning để chống overfitting")
 
     train_records = []
     test_records = []

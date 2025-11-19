@@ -3,32 +3,29 @@ import numpy as np
 import joblib
 from datetime import datetime
 import os
+import matplotlib.pyplot as plt
+from sklearn.tree import plot_tree
 
 # ============================
-# BƯỚC 1: Load mô hình và scaler với kiểm tra kỹ hơn
+# BƯỚC 1: Load mô hình Decision Tree
 # ============================
-def load_model_and_scaler():
-    """Load mô hình và scaler với kiểm tra lỗi chi tiết"""
+def load_decision_tree_model():
+    """Load mô hình Decision Tree đã được huấn luyện"""
     try:
         if not os.path.exists("./result/best_decision_tree_model.pkl"):
-            print("❌ LỖI: Không tìm thấy file 'best_decision_tree_model.pkl'")
+            print("[LỖI] Không tìm thấy file 'best_decision_tree_model.pkl'")
             print("   Vui lòng chạy script huấn luyện trước!")
-            return None, None
-
-        if not os.path.exists("./result/scaler.pkl"):
-            print("❌ LỖI: Không tìm thấy file 'scaler.pkl'")
-            return None, None
+            return None
 
         model = joblib.load("./result/best_decision_tree_model.pkl")
-        scaler = joblib.load("./result/scaler.pkl")
         
-        print("✅ Đã tải mô hình và scaler thành công!")
+        print("[OK] Đã tải mô hình Decision Tree thành công!")
         print(f"   Model type: {type(model).__name__}")
-        return model, scaler
+        return model
         
     except Exception as e:
-        print(f"❌ LỖI khi tải model: {e}")
-        return None, None
+        print(f"[LỖI] Không thể tải model: {e}")
+        return None
 
 # ============================
 # BƯỚC 2: Nhập dữ liệu với validation
@@ -40,26 +37,26 @@ def validate_input(prompt, input_type=float, min_val=None, max_val=None):
             value = input_type(input(prompt))
             
             if min_val is not None and value < min_val:
-                print(f"   ⚠️ Giá trị phải >= {min_val}")
+                print(f"   [CẢNH BÁO] Giá trị phải >= {min_val}")
                 continue
                 
             if max_val is not None and value > max_val:
-                print(f"   ⚠️ Giá trị phải <= {max_val}") 
+                print(f"   [CẢNH BÁO] Giá trị phải <= {max_val}") 
                 continue
                 
             return value
             
         except ValueError:
-            print("   ⚠️ Vui lòng nhập số hợp lệ!")
+            print("   [CẢNH BÁO] Vui lòng nhập số hợp lệ!")
 
 def get_user_input():
     """Nhận input từ user với validation"""
     print("\n" + "="*50)
-    print("🎯 NHẬP DỮ LIỆU DỰ ĐOÁN NHÀ MÁY ĐIỆN")
+    print("NHẬP DỮ LIỆU DỰ ĐOÁN NHÀ MÁY ĐIỆN")
     print("="*50)
     
     # Hiển thị hướng dẫn phạm vi giá trị (dựa trên dataset thực tế)
-    print("\n📋 HƯỚNG DẪN PHẠM VI GIÁ TRỊ THỰC TẾ:")
+    print("\nHƯỚNG DẪN PHẠM VI GIÁ TRỊ THỰC TẾ:")
     print("   • Nhiệt độ (AT): 1-37°C")
     print("   • Tốc độ gió (V): 25-81 m/s") 
     print("   • Áp suất (AP): 992-1033 hPa")
@@ -72,10 +69,10 @@ def get_user_input():
     while True:
         print(f"\n--- Bản ghi #{record_count} ---")
         
-        AT = validate_input("   🌡️ Nhiệt độ môi trường (AT, °C): ", float, -50, 50)
-        V = validate_input("   💨 Tốc độ gió (V, m/s): ", float, 0, 100)
-        AP = validate_input("   📊 Áp suất khí quyển (AP, hPa): ", float, 900, 1100)
-        RH = validate_input("   💧 Độ ẩm (RH, %): ", float, 0, 100)
+        AT = validate_input("   Nhập nhiệt độ môi trường (AT, °C): ", float, -50, 50)
+        V = validate_input("   Nhập tốc độ gió (V, m/s): ", float, 0, 100)
+        AP = validate_input("   Nhập áp suất khí quyển (AP, hPa): ", float, 900, 1100)
+        RH = validate_input("   Nhập độ ẩm (RH, %): ", float, 0, 100)
         
         records.append({
             "STT": record_count,
@@ -89,8 +86,8 @@ def get_user_input():
         record_count += 1
         
         print("\n" + "-"*30)
-        more = input("   ➕ Nhập thêm bản ghi? (y/n): ").strip().lower()
-        if more not in ['y', 'yes', 'có', 'co']:
+        more = input("   Nhập thêm bản ghi? (y/n): ").strip().lower()
+        if more not in ['y', 'yes', 'co', 'có']:
             break
             
     return records
@@ -110,17 +107,17 @@ def analyze_predictions(original_df, predictions):
         df["PE_Predicted"] >= 400,
         df["PE_Predicted"] < 400
     ]
-    choices = ["🔴 RẤT CAO", "🟡 CAO", "🟢 TRUNG BÌNH", "🔵 THẤP"]
-    df["Mức_hiệu_suất"] = np.select(conditions, choices, default="🟢 TRUNG BÌNH")
+    choices = ["RẤT CAO", "CAO", "TRUNG BÌNH", "THẤP"]
+    df["Mức_hiệu_suất"] = np.select(conditions, choices, default="TRUNG BÌNH")
     
     # Đánh giá tổng quan
     avg_pe = df["PE_Predicted"].mean()
     if avg_pe >= 480:
-        overall = "🔴 HIỆU SUẤT CAO - VẬN HÀNH TỐI ƯU"
+        overall = "Hiệu suất cao - vận hành tối ưu"
     elif avg_pe >= 430:
-        overall = "🟡 HIỆU SUẤT TRUNG BÌNH - ỔN ĐỊNH"
+        overall = "Hiệu suất trung bình - vận hành ổn định"
     else:
-        overall = "🟢 HIỆU SUẤT THẤP - CẦN KIỂM TRA"
+        overall = "Hiệu suất thấp - cần kiểm tra"
     
     return df, overall, avg_pe
 
@@ -130,7 +127,7 @@ def analyze_predictions(original_df, predictions):
 def display_results(results_df, overall_rating, avg_pe):
     """Hiển thị kết quả định dạng đẹp"""
     print("\n" + "="*60)
-    print("📊 KẾT QUẢ DỰ ĐOÁN HIỆU SUẤT NHÀ MÁY ĐIỆN")
+    print("KẾT QUẢ DỰ ĐOÁN HIỆU SUẤT NHÀ MÁY ĐIỆN")
     print("="*60)
     
     # Hiển thị bảng kết quả
@@ -149,7 +146,7 @@ def display_results(results_df, overall_rating, avg_pe):
     print(display_df.to_string(index=False))
     
     # Hiển thị tổng quan
-    print("\n" + "📈 TỔNG QUAN HIỆU SUẤT:")
+    print("\nTỔNG QUAN HIỆU SUẤT:")
     print(f"   • Đánh giá tổng: {overall_rating}")
     print(f"   • PE trung bình: {avg_pe:.2f} MW")
     print(f"   • Số lượng dự đoán: {len(results_df)}")
@@ -161,7 +158,53 @@ def display_results(results_df, overall_rating, avg_pe):
         print(f"     {level}: {count} mẫu")
 
 # ============================
-# BƯỚC 5: Lưu kết quả (tùy chọn)
+# BƯỚC 5: Vẽ cây quyết định
+# ============================
+def visualize_decision_tree(model, X_new):
+    """Vẽ cây quyết định với dữ liệu mới"""
+    print("\n" + "="*60)
+    print("VẼ CÂY QUYẾT ĐỊNH")
+    print("="*60)
+    
+    try:
+        # Tạo thư mục img nếu chưa có
+        os.makedirs('img', exist_ok=True)
+        
+        # Tạo tên file với timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        tree_path = os.path.join('img', f'decision_tree_test_{timestamp}.png')
+        
+        # Vẽ cây quyết định
+        plt.figure(figsize=(25, 12))
+        plot_tree(
+            model,
+            feature_names=['AT', 'V', 'AP', 'RH'],
+            filled=True,
+            rounded=True,
+            impurity=True,
+            fontsize=10,
+            max_depth=4  # Hiển thị 4 tầng đầu tiên để dễ nhìn
+        )
+        plt.title(f"CÂY QUYẾT ĐỊNH - DỰ ĐOÁN DỮ LIỆU MỚI", 
+                  fontsize=18, fontweight='bold', pad=20)
+        plt.tight_layout()
+        plt.savefig(tree_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        print(f"[OK] Đã lưu cây quyết định: {tree_path}")
+        print(f"   • Số lượng node: {model.tree_.node_count}")
+        print(f"   • Chiều sâu cây: {model.tree_.max_depth}")
+        print(f"   • Số lá (leaf nodes): {model.tree_.n_leaves}")
+        print(f"   • Số mẫu dự đoán: {len(X_new)}")
+        
+        return tree_path
+        
+    except Exception as e:
+        print(f"[LỖI] Không thể vẽ cây quyết định: {e}")
+        return None
+
+# ============================
+# BƯỚC 6: Lưu kết quả (tùy chọn)
 # ============================
 def save_results(results_df, filename=None):
     """Lưu kết quả ra file CSV"""
@@ -171,28 +214,28 @@ def save_results(results_df, filename=None):
     
     try:
         results_df.to_csv(filename, index=False, encoding='utf-8-sig')
-        print(f"\n💾 Đã lưu kết quả vào file: {filename}")
+        print(f"\nĐã lưu kết quả vào file: {filename}")
         return True
     except Exception as e:
-        print(f"\n⚠️ Không thể lưu file: {e}")
+        print(f"\nKhông thể lưu file: {e}")
         return False
 
 # ============================
 # HÀM CHÍNH
 # ============================
 def main():
-    print("🔮 DỰ ĐOÁN HIỆU SUẤT NHÀ MÁY ĐIỆN")
-    print("   Sử dụng mô hình Decision Tree")
+    print("DỰ ĐOÁN HIỆU SUẤT NHÀ MÁY ĐIỆN")
+    print("   Sử dụng duy nhất mô hình Decision Tree")
     
     # Load model
-    model, scaler = load_model_and_scaler()
-    if model is None or scaler is None:
+    model = load_decision_tree_model()
+    if model is None:
         return
     
     # Nhập dữ liệu
     records = get_user_input()
     if not records:
-        print("❌ Không có dữ liệu để dự đoán!")
+        print("Không có dữ liệu để dự đoán!")
         return
     
     # Chuyển sang DataFrame
@@ -201,8 +244,7 @@ def main():
     # Dự đoán
     try:
         X_new = new_df[['AT', 'V', 'AP', 'RH']]
-        X_new_scaled = scaler.transform(X_new)
-        predictions = model.predict(X_new_scaled)
+        predictions = model.predict(X_new)
         
         # Phân tích kết quả
         results_df, overall_rating, avg_pe = analyze_predictions(new_df, predictions)
@@ -210,15 +252,23 @@ def main():
         # Hiển thị kết quả
         display_results(results_df, overall_rating, avg_pe)
         
+        # Vẽ cây quyết định
+        print("\n" + "="*60)
+        visualize_option = input("Vẽ cây quyết định? (y/n): ").strip().lower()
+        if visualize_option in ['y', 'yes', 'co', 'có']:
+            tree_path = visualize_decision_tree(model, X_new)
+            if tree_path:
+                print(f"\nBạn có thể xem cây quyết định tại: {tree_path}")
+        
         # Hỏi lưu kết quả
-        save_option = input("\n💾 Lưu kết quả ra file CSV? (y/n): ").strip().lower()
-        if save_option in ['y', 'yes', 'có', 'co']:
+        save_option = input("\nLưu kết quả ra file CSV? (y/n): ").strip().lower()
+        if save_option in ['y', 'yes', 'co', 'có']:
             save_results(results_df)
             
-        print("\n✅ Hoàn thành dự đoán!")
+        print("\nĐã hoàn thành dự đoán!")
         
     except Exception as e:
-        print(f"❌ Lỗi trong quá trình dự đoán: {e}")
+        print(f"Lỗi trong quá trình dự đoán: {e}")
 
 if __name__ == "__main__":
     main()

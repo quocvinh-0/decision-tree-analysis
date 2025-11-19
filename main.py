@@ -25,7 +25,7 @@ def main():
     # ============================
     # BƯỚC 1: ĐỌC VÀ TIỀN XỬ LÝ DỮ LIỆU
     # ============================
-    print("PHÂN TÍCH DỮ LIỆU VỚI CÂY QUYẾT ĐỊNH - CẢI TIẾN (10 LẦN)")
+    print("PHÂN TÍCH DỮ LIỆU VỚI CÂY QUYẾT ĐỊNH")
     
     X, y, X_scaled = load_and_prepare_data('Folds5x2_pp.xlsx', use_enhanced_features=False)
     

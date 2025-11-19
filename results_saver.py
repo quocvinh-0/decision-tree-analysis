@@ -28,7 +28,7 @@ def save_models(best_model_info, best_model):
 
 def save_results_to_excel(train_df, test_df, feature_importance_df,
                          best_model_info, comparison_results):
-    """Ghi kết quả ra file Excel nhiều sheet."""
+    
     excel_path = os.path.join('result', 'results_summary.xlsx')
 
     with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:

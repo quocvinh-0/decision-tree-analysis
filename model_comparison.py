@@ -1,3 +1,5 @@
+import copy
+
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
@@ -5,6 +7,14 @@ from sklearn.model_selection import cross_validate
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 from model_trainer import calculate_metrics
+
+try:
+    import torch
+    from torch import nn
+    from torch.utils.data import DataLoader, TensorDataset
+except ImportError:
+    torch = None
+    nn = None
 
 def compare_with_other_models(
     X_train_best,
@@ -80,7 +90,22 @@ def compare_with_other_models(
     return comparison_results
 
 def train_neural_network(X_train, X_test, y_train, y_test):
-    """Huấn luyện MLPRegressor với bộ tham số cố định (không GridSearch)."""
+    """Huấn luyện mạng nơ-ron, ưu tiên GPU khi có PyTorch."""
+
+    if torch is not None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if device.type == 'cuda':
+            print("   Huấn luyện mạng nơ-ron bằng PyTorch trên GPU")
+        else:
+            print("   PyTorch không phát hiện GPU, huấn luyện trên CPU (PyTorch)")
+        return train_neural_network_torch(X_train, X_test, y_train, y_test, device)
+
+    print("   PyTorch chưa khả dụng, sử dụng MLPRegressor (CPU)")
+    return train_neural_network_sklearn(X_train, X_test, y_train, y_test)
+
+
+def train_neural_network_sklearn(X_train, X_test, y_train, y_test):
+    """Fallback dùng sklearn MLPRegressor."""
 
     fixed_params = {
         'hidden_layer_sizes': (128, 64),
@@ -94,7 +119,7 @@ def train_neural_network(X_train, X_test, y_train, y_test):
         'random_state': 42,
     }
 
-    print("   Huấn luyện mạng nơ-ron với bộ tham số đã được cung cấp")
+    print("   Huấn luyện mạng nơ-ron với bộ tham số cố định (CPU)")
     nn_model = MLPRegressor(**fixed_params)
     nn_model.fit(X_train, y_train)
 
@@ -103,7 +128,7 @@ def train_neural_network(X_train, X_test, y_train, y_test):
     nn_metrics['predictions'] = y_pred_nn
     nn_metrics['params'] = fixed_params
 
-    print("   Hoàn tất huấn luyện mạng nơ-ron:")
+    print("   Hoàn tất huấn luyện mạng nơ-ron (sklearn):")
     print(f"      R²:   {nn_metrics['r2']:.4f}")
     print(f"      RMSE: {nn_metrics['rmse']:.4f}")
     print(f"      MAE:  {nn_metrics['mae']:.4f}")
@@ -113,6 +138,104 @@ def train_neural_network(X_train, X_test, y_train, y_test):
     print(f"      Explained Variance: {nn_metrics['explained_variance']:.4f}")
 
     return nn_metrics, nn_model
+
+
+def train_neural_network_torch(X_train, X_test, y_train, y_test, device):
+    """Huấn luyện mạng nơ-ron bằng PyTorch (ưu tiên GPU)."""
+
+    class FeedForwardRegressor(nn.Module):
+        def __init__(self, input_dim):
+            super().__init__()
+            self.net = nn.Sequential(
+                nn.Linear(input_dim, 128),
+                nn.ReLU(),
+                nn.Linear(128, 64),
+                nn.ReLU(),
+                nn.Linear(64, 1),
+            )
+
+        def forward(self, x):
+            return self.net(x)
+
+    X_train_tensor = torch.from_numpy(X_train.astype(np.float32))
+    y_train_tensor = torch.from_numpy(y_train.reshape(-1, 1).astype(np.float32))
+    X_test_tensor = torch.from_numpy(X_test.astype(np.float32))
+    y_test_tensor = torch.from_numpy(y_test.reshape(-1, 1).astype(np.float32))
+
+    dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    loader = DataLoader(dataset, batch_size=2048, shuffle=True)
+
+    model = FeedForwardRegressor(X_train.shape[1]).to(device)
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-3)
+
+    best_state = None
+    best_loss = float('inf')
+    patience = 40
+    wait = 0
+    max_epochs = 400
+
+    X_test_tensor = X_test_tensor.to(device)
+    y_test_tensor = y_test_tensor.to(device)
+
+    for epoch in range(1, max_epochs + 1):
+        model.train()
+        for batch_X, batch_y in loader:
+            batch_X = batch_X.to(device)
+            batch_y = batch_y.to(device)
+            optimizer.zero_grad()
+            preds = model(batch_X)
+            loss = criterion(preds, batch_y)
+            loss.backward()
+            optimizer.step()
+
+        model.eval()
+        with torch.no_grad():
+            val_loss = criterion(model(X_test_tensor), y_test_tensor).item()
+
+        if val_loss + 1e-5 < best_loss:
+            best_loss = val_loss
+            best_state = copy.deepcopy(model.state_dict())
+            wait = 0
+        else:
+            wait += 1
+
+        if epoch % 25 == 0:
+            print(f"      Epoch {epoch:03d} | Val MSE: {val_loss:.4f}")
+
+        if wait >= patience:
+            print(f"      Dừng sớm tại epoch {epoch} (không cải thiện)")
+            break
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
+
+    model.eval()
+    with torch.no_grad():
+        y_pred_nn = model(X_test_tensor).cpu().numpy().ravel()
+
+    nn_metrics = calculate_metrics(y_test, y_pred_nn)
+    nn_metrics['predictions'] = y_pred_nn
+    nn_metrics['params'] = {
+        'framework': 'torch',
+        'layers': [X_train.shape[1], 128, 64, 1],
+        'optimizer': 'Adam',
+        'lr': 5e-4,
+        'weight_decay': 1e-3,
+        'max_epochs': max_epochs,
+    }
+
+    print("   Hoàn tất huấn luyện mạng nơ-ron (PyTorch):")
+    print(f"      Thiết bị: {device}")
+    print(f"      R²:   {nn_metrics['r2']:.4f}")
+    print(f"      RMSE: {nn_metrics['rmse']:.4f}")
+    print(f"      MAE:  {nn_metrics['mae']:.4f}")
+    print(f"      Median AE: {nn_metrics['medae']:.4f}")
+    print(f"      Max Error: {nn_metrics['max_error']:.4f}")
+    print(f"      MAPE: {nn_metrics['mape']:.2f}%")
+    print(f"      Explained Variance: {nn_metrics['explained_variance']:.4f}")
+
+    return nn_metrics, model.to('cpu')
 
 def perform_cross_validation(model, X, y):
     """Thực hiện cross-validation"""

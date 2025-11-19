@@ -13,7 +13,6 @@ def load_and_prepare_data(file_path, use_enhanced_features=False):
     Returns:
     - X: features
     - y: target
-    - X_scaled: features đã chuẩn hóa
     """
     try:
         xls = pd.ExcelFile(file_path)
