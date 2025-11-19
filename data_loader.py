@@ -3,17 +3,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 def load_and_prepare_data(file_path, use_enhanced_features=False):
-    """
-    Đọc và chuẩn bị dữ liệu từ file Excel
-    
-    Parameters:
-    - file_path: đường dẫn đến file dữ liệu
-    - use_enhanced_features: có sử dụng feature engineering không
-    
-    Returns:
-    - X: features
-    - y: target
-    """
+   # Đọc dữ liệu từ file Excel và tiền xử lý
     try:
         xls = pd.ExcelFile(file_path)
         df_list = []
@@ -43,9 +33,9 @@ def load_and_prepare_data(file_path, use_enhanced_features=False):
     # Feature engineering (tùy chọn)
     if use_enhanced_features:
         X = create_enhanced_features(X)
-        print("    ✅ Đã sử dụng feature engineering")
+        print("     Đã sử dụng feature engineering")
     else:
-        print("    ℹ️  Sử dụng feature gốc (để so sánh công bằng)")
+        print("     Sử dụng feature gốc (để so sánh công bằng)")
     
     # Chuẩn hóa dữ liệu
     scaler = StandardScaler()
@@ -54,11 +44,8 @@ def load_and_prepare_data(file_path, use_enhanced_features=False):
     return X, y, X_scaled
 
 def create_enhanced_features(X):
-    """
-    Tạo các feature mới từ feature gốc
-    """
-    print("\n🔧 FEATURE ENGINEERING NÂNG CAO")
     
+    #Tạo các feature mới từ feature gốc
     X_enhanced = X.copy()
     X_enhanced['AT_V'] = X['AT'] * X['V']           # Tương tác nhiệt độ và áp suất hơi
     X_enhanced['AT_RH'] = X['AT'] * X['RH']         # Tương tác nhiệt độ và độ ẩm

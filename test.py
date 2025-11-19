@@ -6,11 +6,11 @@ import os
 import matplotlib.pyplot as plt
 from sklearn.tree import plot_tree
 
-# ============================
+
 # BƯỚC 1: Load mô hình Decision Tree
-# ============================
+
 def load_decision_tree_model():
-    """Load mô hình Decision Tree đã được huấn luyện"""
+    # Load mô hình Decision Tree đã lưu
     try:
         if not os.path.exists("./result/best_decision_tree_model.pkl"):
             print("[LỖI] Không tìm thấy file 'best_decision_tree_model.pkl'")
@@ -27,9 +27,9 @@ def load_decision_tree_model():
         print(f"[LỖI] Không thể tải model: {e}")
         return None
 
-# ============================
+
 # BƯỚC 2: Nhập dữ liệu với validation
-# ============================
+
 def validate_input(prompt, input_type=float, min_val=None, max_val=None):
     """Validate input với range kiểm tra"""
     while True:
@@ -50,11 +50,8 @@ def validate_input(prompt, input_type=float, min_val=None, max_val=None):
             print("   [CẢNH BÁO] Vui lòng nhập số hợp lệ!")
 
 def get_user_input():
-    """Nhận input từ user với validation"""
-    print("\n" + "="*50)
+    # Nhận input từ user với validation
     print("NHẬP DỮ LIỆU DỰ ĐOÁN NHÀ MÁY ĐIỆN")
-    print("="*50)
-    
     # Hiển thị hướng dẫn phạm vi giá trị (dựa trên dataset thực tế)
     print("\nHƯỚNG DẪN PHẠM VI GIÁ TRỊ THỰC TẾ:")
     print("   • Nhiệt độ (AT): 1-37°C")
@@ -67,8 +64,7 @@ def get_user_input():
     record_count = 1
     
     while True:
-        print(f"\n--- Bản ghi #{record_count} ---")
-        
+        print(f"\nNhập dữ liệu cho bản ghi thứ {record_count}:")
         AT = validate_input("   Nhập nhiệt độ môi trường (AT, °C): ", float, -50, 50)
         V = validate_input("   Nhập tốc độ gió (V, m/s): ", float, 0, 100)
         AP = validate_input("   Nhập áp suất khí quyển (AP, hPa): ", float, 900, 1100)
@@ -92,11 +88,11 @@ def get_user_input():
             
     return records
 
-# ============================
+
 # BƯỚC 3: Phân tích và dự đoán
-# ============================
+
 def analyze_predictions(original_df, predictions):
-    """Phân tích kết quả dự đoán"""
+    # Phân tích kết quả dự đoán
     df = original_df.copy()
     df["PE_Predicted"] = predictions
     
@@ -121,14 +117,11 @@ def analyze_predictions(original_df, predictions):
     
     return df, overall, avg_pe
 
-# ============================
-# BƯỚC 4: Hiển thị kết quả đẹp mắt
-# ============================
+
+# BƯỚC 4: Hiển thị kết quả 
+
 def display_results(results_df, overall_rating, avg_pe):
-    """Hiển thị kết quả định dạng đẹp"""
-    print("\n" + "="*60)
     print("KẾT QUẢ DỰ ĐOÁN HIỆU SUẤT NHÀ MÁY ĐIỆN")
-    print("="*60)
     
     # Hiển thị bảng kết quả
     display_df = results_df[["STT", "AT", "V", "AP", "RH", "PE_Predicted", "Mức_hiệu_suất"]].copy()
@@ -157,9 +150,9 @@ def display_results(results_df, overall_rating, avg_pe):
     for level, count in performance_counts.items():
         print(f"     {level}: {count} mẫu")
 
-# ============================
+
 # BƯỚC 5: Vẽ cây quyết định
-# ============================
+
 def visualize_decision_tree(model, X_new):
     """Vẽ cây quyết định với dữ liệu mới"""
     print("\n" + "="*60)
@@ -203,9 +196,9 @@ def visualize_decision_tree(model, X_new):
         print(f"[LỖI] Không thể vẽ cây quyết định: {e}")
         return None
 
-# ============================
+
 # BƯỚC 6: Lưu kết quả (tùy chọn)
-# ============================
+
 def save_results(results_df, filename=None):
     """Lưu kết quả ra file CSV"""
     if filename is None:
@@ -220,9 +213,9 @@ def save_results(results_df, filename=None):
         print(f"\nKhông thể lưu file: {e}")
         return False
 
-# ============================
+
 # HÀM CHÍNH
-# ============================
+
 def main():
     print("DỰ ĐOÁN HIỆU SUẤT NHÀ MÁY ĐIỆN")
     print("   Sử dụng duy nhất mô hình Decision Tree")

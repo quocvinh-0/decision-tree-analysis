@@ -1,5 +1,3 @@
-"""Decision Tree training utilities aligned với THB3_Decision_Tree.pdf."""
-
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV
@@ -15,9 +13,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import cross_val_score
 
 def calculate_metrics(y_true, y_pred):
-    """
-    Tính các metrics đánh giá mô hình
-    """
+    # Tính các chỉ số đánh giá mô hình
     mse = mean_squared_error(y_true, y_pred)
     mae = mean_absolute_error(y_true, y_pred)
     medae = median_absolute_error(y_true, y_pred)
@@ -27,7 +23,6 @@ def calculate_metrics(y_true, y_pred):
     rmse = np.sqrt(mse)
     # Xử lý trường hợp y_true = 0 để tránh lỗi chia cho 0
     mape = np.mean(np.abs((y_true - y_pred) / np.where(y_true != 0, y_true, 1e-10))) * 100
-    
     return {
         'mse': mse,
         'rmse': rmse,
@@ -40,7 +35,7 @@ def calculate_metrics(y_true, y_pred):
     }
 
 def find_optimal_ccp_alpha(X_train, y_train, base_params):
-    """Tìm giá trị ccp_alpha tối ưu dựa trên 5-fold CV (không đụng tới test set)."""
+    # Tìm giá trị ccp_alpha tối ưu bằng cross-validation
     candidate_alphas = np.logspace(-4, -1, 20)
     best_alpha = 0.0
     best_score = -np.inf
@@ -168,10 +163,7 @@ def train_decision_trees(X, y, X_scaled=None, n_runs=10, use_grid_search=True):
 
 def print_10_runs_summary(train_df, test_df, feature_importance_df):
     """In tổng kết kết quả 10 lần chạy"""
-    print("\n" + "="*50)
     print("PHÂN TÍCH TỔNG HỢP 10 LẦN CHẠY")
-    print("="*50)
-    
     print("\n THỐNG KÊ TẬP TRAIN (10 lần):")
     print(f"     R²:     {train_df['r2'].mean():.4f} (±{train_df['r2'].std():.4f})")
     print(f"     RMSE:   {train_df['rmse'].mean():.4f} (±{train_df['rmse'].std():.4f})")

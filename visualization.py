@@ -74,8 +74,6 @@ def create_model_comparison_chart(comparison_results):
 def create_metric_comparison_chart(comparison_results):
     """Vẽ các biểu đồ so sánh chi tiết từng metric đánh giá."""
     print("2. Biểu đồ so sánh các chỉ số đánh giá")
-    metric_path = os.path.join('img', 'metric_comparison.png')
-
     available_models = []
     model_colors = []
     metrics_per_model = {
@@ -117,10 +115,6 @@ def create_metric_comparison_chart(comparison_results):
         ('mape', 'MAPE % (thấp hơn tốt hơn)', False),
     ]
 
-    cols = 3
-    rows = int(np.ceil(len(metric_info) / cols))
-    plt.figure(figsize=(6 * cols, 4 * rows))
-
     axis_labels = {
         'r2': 'R²',
         'explained_variance': 'Explained Variance',
@@ -131,24 +125,35 @@ def create_metric_comparison_chart(comparison_results):
         'mape': 'MAPE (%)',
     }
 
-    for idx, (metric_key, title, higher_is_better) in enumerate(metric_info, start=1):
-        plt.subplot(rows, cols, idx)
+    for metric_key, title, higher_is_better in metric_info:
+        plt.figure(figsize=(6, 4))
         values = metrics_per_model[metric_key]
-        bars = plt.bar(available_models, values, color=model_colors, alpha=0.8, edgecolor='black')
+        bars = plt.bar(available_models, values, color=model_colors, alpha=0.85, edgecolor='black')
         plt.title(title, fontweight='bold')
-        plt.ylabel(axis_labels.get(metric_key, metric_key.upper()))
-        text_va = 'bottom'
+        y_label = axis_labels.get(metric_key, metric_key.upper())
         if not higher_is_better:
-            plt.ylabel(f"{axis_labels.get(metric_key, metric_key.upper())} (giá trị nhỏ tốt)")
+            y_label = f"{y_label} (càng thấp càng tốt)"
+        plt.ylabel(y_label)
         plt.grid(True, alpha=0.2)
         for bar, value in zip(bars, values):
-            plt.text(bar.get_x() + bar.get_width() / 2, value, f"{value:.4f}",
-                     ha='center', va=text_va, fontsize=9)
+            va = 'bottom' if higher_is_better else 'top'
+            offset = 0.003 if higher_is_better else -0.003
+            plt.text(
+                bar.get_x() + bar.get_width() / 2,
+                value + offset,
+                f"{value:.4f}",
+                ha='center',
+                va=va,
+                fontsize=10,
+                fontweight='bold'
+            )
 
-    plt.tight_layout()
-    plt.savefig(metric_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    print(f"   Đã lưu: {metric_path}")
+        metric_filename = f"metric_comparison_{metric_key}.png"
+        metric_path = os.path.join('img', metric_filename)
+        plt.tight_layout()
+        plt.savefig(metric_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"   Đã lưu: {metric_path}")
 
 def create_feature_importance_chart(feature_importance_df):
     """Biểu đồ feature importance"""
@@ -806,7 +811,7 @@ def plot_decision_tree(best_model_info):
         rounded=True,
         impurity=True,
         fontsize=8,
-        max_depth=3
+        max_depth=4
     )
     plt.title(f"CÂY QUYẾT ĐỊNH - MÔ HÌNH TỐT NHẤT (Lần {best_model_info['run_id'] + 1})", 
               fontsize=16, fontweight='bold')

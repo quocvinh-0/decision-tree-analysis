@@ -105,7 +105,7 @@ def train_neural_network(X_train, X_test, y_train, y_test):
 
 
 def train_neural_network_sklearn(X_train, X_test, y_train, y_test):
-    """Fallback dùng sklearn MLPRegressor."""
+#    """Huấn luyện mạng nơ-ron bằng MLPRegressor (sklearn, CPU)."""
 
     fixed_params = {
         'hidden_layer_sizes': (128, 64),
@@ -157,10 +157,15 @@ def train_neural_network_torch(X_train, X_test, y_train, y_test, device):
         def forward(self, x):
             return self.net(x)
 
-    X_train_tensor = torch.from_numpy(X_train.astype(np.float32))
-    y_train_tensor = torch.from_numpy(y_train.reshape(-1, 1).astype(np.float32))
-    X_test_tensor = torch.from_numpy(X_test.astype(np.float32))
-    y_test_tensor = torch.from_numpy(y_test.reshape(-1, 1).astype(np.float32))
+    X_train_np = np.asarray(X_train, dtype=np.float32)
+    X_test_np = np.asarray(X_test, dtype=np.float32)
+    y_train_np = np.asarray(y_train, dtype=np.float32).reshape(-1, 1)
+    y_test_np = np.asarray(y_test, dtype=np.float32).reshape(-1, 1)
+
+    X_train_tensor = torch.from_numpy(X_train_np)
+    y_train_tensor = torch.from_numpy(y_train_np)
+    X_test_tensor = torch.from_numpy(X_test_np)
+    y_test_tensor = torch.from_numpy(y_test_np)
 
     dataset = TensorDataset(X_train_tensor, y_train_tensor)
     loader = DataLoader(dataset, batch_size=2048, shuffle=True)

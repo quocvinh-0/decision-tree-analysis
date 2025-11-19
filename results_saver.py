@@ -13,18 +13,11 @@ def save_results(train_df, test_df, feature_importance_df, best_model_info,
 
 
 def save_models(best_model_info, best_model):
-    """Lưu mô hình Decision Tree và scaler (nếu hiện diện)."""
+    # Lưu mô hình
     model_path = os.path.join('result', 'best_decision_tree_model.pkl')
     joblib.dump(best_model, model_path)
     print("\nĐã lưu mô hình Decision Tree vào thư mục 'result':")
     print(f"   - {model_path}")
-
-    scaler = best_model_info.get('scaler')
-    if scaler is not None:
-        scaler_path = os.path.join('result', 'scaler.pkl')
-        joblib.dump(scaler, scaler_path)
-        print(f"   - {scaler_path} (Scaler đi kèm)")
-
 
 def save_results_to_excel(train_df, test_df, feature_importance_df,
                          best_model_info, comparison_results):
@@ -43,7 +36,7 @@ def save_results_to_excel(train_df, test_df, feature_importance_df,
 
 
 def save_summary_sheet(writer, test_df, best_model_info, comparison_results):
-    """Lưu sheet tổng quan"""
+    # Lưu sheet tổng quan
     def status_text(condition, good='Tốt', caution='Cần theo dõi'):
         return good if condition else caution
 

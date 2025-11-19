@@ -7,5 +7,5 @@ project/
 ├── results_saver.py        # Lưu kết quả và mô hình
 ├── requirements.txt        # Danh sách thư viện cần thiết
 └── README.md 
-test.py      chạy kết quả
-tree.py gồm hết code trong 1 file        
+test.py  chạy kết quả
+    

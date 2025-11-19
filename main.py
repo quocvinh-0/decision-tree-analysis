@@ -14,33 +14,28 @@ from results_saver import save_results
 
 def main():
     """Hàm chính để chạy toàn bộ quy trình phân tích"""
-    
-    # ============================
     # TẠO THƯ MỤC LƯU TRỮ
-    # ============================
     os.makedirs('img', exist_ok=True)
     os.makedirs('result', exist_ok=True)
     print("Đã tạo thư mục 'img' và 'result'")
     
-    # ============================
+    
     # BƯỚC 1: ĐỌC VÀ TIỀN XỬ LÝ DỮ LIỆU
-    # ============================
+    
     print("PHÂN TÍCH DỮ LIỆU VỚI CÂY QUYẾT ĐỊNH")
     
     X, y, X_scaled = load_and_prepare_data('Folds5x2_pp.xlsx', use_enhanced_features=False)
     
-    # ============================
     # BƯỚC 2: HUẤN LUYỆN 10 MÔ HÌNH CÂY QUYẾT ĐỊNH
-    # ============================
-    print("\nCẢI TIẾN: HUẤN LUYỆN 10 LẦN VÀ TÍNH TRUNG BÌNH")
+    
+    print("\nHUẤN LUYỆN 10 LẦN VÀ TÍNH TRUNG BÌNH")
     
     train_df, test_df, feature_importance_df, best_models, best_model_info = train_decision_trees(
         X, y, X_scaled, n_runs=10
     )
     
-    # ============================
     # BƯỚC 3: SO SÁNH VỚI MÔ HÌNH KHÁC
-    # ============================
+    
     print("\nSO SÁNH VỚI CÁC MÔ HÌNH KHÁC")
     
     comparison_results = compare_with_other_models(
@@ -51,9 +46,9 @@ def main():
         best_model=best_model_info['model']
     )
     
-    # ============================
+    
     # BƯỚC 4: TRỰC QUAN HÓA KẾT QUẢ
-    # ============================
+    
     print("\nBẮT ĐẦU TRỰC QUAN HÓA KẾT QUẢ")
     
     create_all_visualizations(
@@ -61,27 +56,20 @@ def main():
         comparison_results, X_scaled, y
     )
     
-    # ============================
+    
     # BƯỚC 5: LƯU KẾT QUẢ
-    # ============================
+    
     print("\nLƯU KẾT QUẢ VÀO FILE")
     
     save_results(
         train_df, test_df, feature_importance_df, best_model_info,
         comparison_results, best_model_info['model']
     )
-    
-    # ============================
     # BƯỚC 6: TỔNG KẾT
-    # ============================
+    
     print_final_summary(test_df, best_model_info, feature_importance_df)
 
 def print_final_summary(test_df, best_model_info, feature_importance_df):
-    """In tổng kết cuối cùng"""
-    print("\n" + "="*60)
-    print("TỔNG KẾT KẾT QUẢ")
-    print("="*60)
-    
     # Đánh giá chất lượng tổng thể
     avg_test_r2 = test_df['r2'].mean()
     std_test_r2 = test_df['r2'].std()
@@ -123,8 +111,6 @@ def print_final_summary(test_df, best_model_info, feature_importance_df):
     print(f"   - Ảnh biểu đồ: {len(os.listdir('img'))} file trong thư mục 'img/'")
     print(f"   - Model & Data: {len(os.listdir('result'))} file trong thư mục 'result/'")
     print(f"   - File Excel: result/results_summary.xlsx")
-    print("\nHOÀN THÀNH PHÂN TÍCH!")
-    print("="*60)
 
 if __name__ == "__main__":
     main()
